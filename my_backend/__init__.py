@@ -1,5 +1,11 @@
 
+from pathlib import Path
+from dotenv import load_dotenv
 from flask import Flask
+
+# Load environment variables before importing config classes
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
 from .extensions import db, migrate
 from .config import (
     DevelopmentConfig,
