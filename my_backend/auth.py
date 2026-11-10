@@ -28,8 +28,13 @@ def auth_required(f):
                 current_app.config["JWT_SECRET"],
                 algorithms=["HS256"]
             )
-
             g.user_id = int(payload["sub"])
+
+        except jwt.ExpiredSignatureError:
+            return jsonify({
+                "code": "UNAUTHORIZED",
+                "message": "Token has expired"
+            }), 401
 
         except (jwt.PyJWTError, KeyError, ValueError, TypeError):
             return jsonify({
@@ -41,6 +46,21 @@ def auth_required(f):
 
     return decorated_function
 
+def admin_required(f):
+    @wraps(f)
+    @auth_required
+    def decorated_function(*args, **kwargs):
+        user = db.session.get(User, g.user_id)
+
+        if user is None or user.role != "admin":
+            return jsonify({
+                "code": "FORBIDDEN",
+                "message": "Admin access required"
+            }), 403
+
+        return f(*args, **kwargs)
+
+    return decorated_function
 
 @auth_bp.post("/register")
 def register():
@@ -132,4 +152,84 @@ def login():
     return jsonify({
         "access_token": token,
         "token_type": "Bearer"
+    }), 200
+
+@auth_bp.get("/me")
+@auth_required
+def get_my_profile():
+    user = User.query.get(g.user_id)
+
+    if user is None:
+        return jsonify({
+            "code": "USER_NOT_FOUND",
+            "message": "User not found"
+        }), 404
+
+    return jsonify({
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "created_at": user.created_at.isoformat() if user.created_at else None
+    }), 200
+
+@auth_bp.patch("/me")
+@auth_required
+def update_my_profile():
+    user = db.session.get(User, g.user_id)
+
+    if user is None:
+        return jsonify({
+            "code": "USER_NOT_FOUND",
+            "message": "User not found"
+        }), 404
+
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({
+            "code": "VALIDATION_ERROR",
+            "message": "A JSON object is required"
+        }), 400
+
+    allowed_fields = {"username", "email"}
+
+    if not any(field in data for field in allowed_fields):
+        return jsonify({
+            "code": "VALIDATION_ERROR",
+            "message": "Provide username or email to update"
+        }), 400
+
+    if any(field not in allowed_fields for field in data):
+        return jsonify({
+            "code": "VALIDATION_ERROR",
+            "message": "Only username and email can be updated"
+        }), 400
+
+    for field in allowed_fields:
+        if field in data:
+            value = data[field]
+
+            if not isinstance(value, str) or not value.strip():
+                return jsonify({
+                    "code": "VALIDATION_ERROR",
+                    "message": f"{field} must be a non-empty string"
+                }), 400
+
+            setattr(user, field, value.strip())
+
+    db.session.commit()
+
+    return jsonify({
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "created_at": user.created_at.isoformat() if user.created_at else None
+    }), 200
+
+@auth_bp.get("/admin/ping")
+@admin_required
+def admin_ping():
+    return jsonify({
+        "status": "ok",
+        "role": "admin"
     }), 200
