@@ -5,8 +5,8 @@ import os
 class BaseConfig:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_SECRET = None
+    JWT_EXPIRATION_MINUTES = 60
     SQLALCHEMY_DATABASE_URI = None
-
 
 class DevelopmentConfig(BaseConfig):
     DEBUG = True
