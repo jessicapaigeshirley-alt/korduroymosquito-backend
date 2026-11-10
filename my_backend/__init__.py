@@ -28,6 +28,8 @@ def create_app(config_name):
     db.init_app(app)
     migrate.init_app(app, db)
 
+    from . import models
+
     from .listings import listings_bp
     app.register_blueprint(listings_bp)
 
