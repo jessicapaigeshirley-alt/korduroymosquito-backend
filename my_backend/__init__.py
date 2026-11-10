@@ -31,5 +31,8 @@ def create_app(config_name):
     from .listings import listings_bp
     app.register_blueprint(listings_bp)
 
+    from .health import health_bp
+    app.register_blueprint(health_bp)
+    
     return app
 
