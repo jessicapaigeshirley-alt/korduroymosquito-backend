@@ -1,0 +1,75 @@
+from decimal import Decimal, InvalidOperation
+
+from flask import Blueprint, jsonify, request, g
+
+from .auth import auth_required
+from .extensions import db
+from .models import Listing
+
+listings_bp = Blueprint("listings", __name__)
+
+
+@listings_bp.get("/api/korduroymosquito/listings")
+@auth_required
+def get_listings():
+    return jsonify({"listings": []}), 200
+
+@listings_bp.post("/api/korduroymosquito/listings")
+@auth_required
+def create_listing():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({
+            "code": "INVALID_REQUEST",
+            "message": "A JSON object is required"
+        }), 400
+
+    title = data.get("title")
+    price = data.get("price")
+
+    if not isinstance(title, str) or not title.strip():
+        return jsonify({
+            "code": "VALIDATION_ERROR",
+            "message": "Title is required"
+        }), 400
+
+    if len(title.strip()) > 150:
+        return jsonify({
+            "code": "VALIDATION_ERROR",
+            "message": "Title must be 150 characters or fewer"
+        }), 400
+
+    try:
+        if isinstance(price, bool) or price is None:
+            raise ValueError()
+        amount = Decimal(str(price))
+        if not amount.is_finite() or amount < 0 or amount.as_tuple().exponent < -2 or amount >= Decimal("100000000"):
+            raise ValueError()
+    except (InvalidOperation, ValueError):
+        return jsonify({
+            "code": "VALIDATION_ERROR",
+            "message": "Price must be a valid nonnegative amount with at most two decimal places"
+        }), 400
+
+    listing = Listing(
+        title=title.strip(),
+        price=amount,
+        description=data.get("description"),
+        category=data.get("category"),
+        condition=data.get("condition"),
+        user_id=g.user_id
+    )
+
+    db.session.add(listing)
+    db.session.commit()
+
+    return jsonify({
+        "id": listing.id,
+        "user_id": listing.user_id,
+        "title": listing.title,
+        "description": listing.description,
+        "price": str(listing.price),
+        "category": listing.category,
+        "condition": listing.condition
+    }), 201
