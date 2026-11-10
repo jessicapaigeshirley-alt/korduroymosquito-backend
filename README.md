@@ -15,3 +15,13 @@ This is the Flask backend for my Korduroy Mosquito project.
 
 ## Development
 This project is currently under development.
+
+## Unit 1 Setup
+
+To create a virtual environment, run:
+
+python3 -m venv venv
+
+To activate it on macOS, run:
+
+source venv/bin/activate
