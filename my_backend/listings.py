@@ -87,3 +87,23 @@ def create_listing():
         "category": listing.category,
         "condition": listing.condition
     }), 201
+@listings_bp.get("/api/korduroymosquito/listings/<int:listing_id>")
+@auth_required
+def get_listing(listing_id):
+    listing = db.session.get(Listing, listing_id)
+
+    if listing is None:
+        return jsonify({
+            "code": "NOT_FOUND",
+            "message": "Listing not found"
+        }), 404
+
+    return jsonify({
+        "id": listing.id,
+        "user_id": listing.user_id,
+        "title": listing.title,
+        "description": listing.description,
+        "price": str(listing.price),
+        "category": listing.category,
+        "condition": listing.condition
+    }), 200
