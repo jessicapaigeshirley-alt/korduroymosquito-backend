@@ -27,7 +27,18 @@ def create_app(config_name):
 
     db.init_app(app)
     migrate.init_app(app, db)
+    db.init_app(app)
+    migrate.init_app(app, db)
 
+    from . import models  # noqa: F401
+
+    from .listings import listings_bp
+    app.register_blueprint(listings_bp)
+
+    from .health import health_bp
+    app.register_blueprint(health_bp)
+
+    return app
     from .listings import listings_bp
     app.register_blueprint(listings_bp)
 
